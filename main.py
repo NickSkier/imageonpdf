@@ -1,7 +1,8 @@
 import fitz
 import json
-from os import makedirs
-from os.path import isfile
+import random
+from os import makedirs, listdir, rename
+from os.path import isfile, join
 
 
 def readJson(json_path):
@@ -36,7 +37,9 @@ def createDirs(images_data):
     return successful
 
 
-def addImage(doc, image, page_index=0, offset_x=0, offset_y=0, image_size_factor=1):
+def addImageOnPage(
+    doc, image, page_index=0, offset_x=0, offset_y=0, image_size_factor=1
+):
     pix = fitz.Pixmap(image)
 
     x_dpi = pix.xres or 72
@@ -54,27 +57,61 @@ def addImage(doc, image, page_index=0, offset_x=0, offset_y=0, image_size_factor
 
 def addImageOnEachPage(doc, image, offset_x=0, offset_y=0, image_size_factor=1):
     for page_index in range(len(doc)):
-        doc = addImage(doc, image, page_index, offset_x, offset_y, image_size_factor)
+        doc = addImageOnPage(
+            doc, image, page_index, offset_x, offset_y, image_size_factor
+        )
 
     return doc
 
 
-def addRegularImages(doc, images_data):
-    for img in images_data["images"]:
-        print(f"Image {img['path']} at ({img['x']}, {img['y']}) scale {img['size']}")
-        if isfile(img["path"]):
-            if img["page"] == "all":
-                doc = addImageOnEachPage(
-                    doc, img["path"], img["x"], img["y"], img["size"]
-                )
-                print("Added on all pages")
-            else:
-                doc = addImage(
-                    doc, img["path"], img["page"], img["x"], img["y"], img["size"]
-                )
-                print(f"Added on the page {img['page']}")
+def processImagePlacement(doc, img, path=None):
+    if path is None:
+        path = img["path"]
+
+    print(f"Image {path} at ({img['x']}, {img['y']}) scale {img['size']}")
+    if isfile(path):
+        if img["page"] == "all":
+            doc = addImageOnEachPage(doc, path, img["x"], img["y"], img["size"])
+            print("Added on all pages")
         else:
-            print("Does not exists")
+            doc = addImageOnPage(
+                doc, path, img["page"], img["x"], img["y"], img["size"]
+            )
+            print(f"Added on the page {img['page']}")
+    else:
+        print("Does not exists")
+
+    return doc
+
+
+def placeRegularImages(doc, images_data):
+    for img in images_data["images"]:
+        processImagePlacement(doc, img)
+
+    return doc
+
+
+def placeDisposableOrRandomImage(doc, images_data, disposable=False):
+    if disposable:
+        images_type = images_data["disposable_random_images"]
+    else:
+        images_type = images_data["random_images"]
+
+    for images_collection in images_type:
+        images_names = [
+            f
+            for f in listdir(images_collection["path"])
+            if isfile(join(images_collection["path"], f))
+        ]
+        if images_names:
+            random_image = random.choice(images_names)
+            random_image_path = join(images_collection["path"], random_image)
+            processImagePlacement(doc, images_collection, random_image_path)
+            if disposable:
+                rename(
+                    random_image_path,
+                    join(images_collection["disposed_path"], random_image),
+                )
 
     return doc
 
@@ -86,7 +123,9 @@ def main():
 
     createDirs(json_data)
 
-    doc = addRegularImages(doc, json_data)
+    doc = placeRegularImages(doc, json_data)
+    doc = placeDisposableOrRandomImage(doc, json_data)
+    doc = placeDisposableOrRandomImage(doc, json_data, True)
 
     doc.save("output.pdf")
 
