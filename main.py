@@ -1,6 +1,7 @@
 import fitz
 import json
 import random
+import argparse
 from os import makedirs, listdir, rename
 from os.path import isfile, join
 
@@ -64,34 +65,37 @@ def addImageOnEachPage(doc, image, offset_x=0, offset_y=0, image_size_factor=1):
     return doc
 
 
-def processImagePlacement(doc, img, path=None):
+def processImagePlacement(doc, img, path=None, verbose=False):
     if path is None:
         path = img["path"]
 
-    print(f"Image {path} at ({img['x']}, {img['y']}) scale {img['size']}")
+    if verbose:
+        print(f"Image {path} at ({img['x']}, {img['y']}) scale {img['size']}")
     if isfile(path):
         if img["page"] == "all":
             doc = addImageOnEachPage(doc, path, img["x"], img["y"], img["size"])
-            print("Added on all pages")
+            if verbose:
+                print("Added on all pages")
         else:
             doc = addImageOnPage(
                 doc, path, img["page"], img["x"], img["y"], img["size"]
             )
-            print(f"Added on the page {img['page']}")
+            if verbose:
+                print(f"Added on the page {img['page']}")
     else:
-        print("Does not exists")
+        print(f"\033[33mWARNING:\033[0m Image {path} does not exist!")
 
     return doc
 
 
-def placeRegularImages(doc, images_data):
+def placeRegularImages(doc, images_data, verbose=False):
     for img in images_data["images"]:
-        processImagePlacement(doc, img)
+        processImagePlacement(doc, img, verbose=verbose)
 
     return doc
 
 
-def placeDisposableOrRandomImage(doc, images_data, disposable=False):
+def placeDisposableOrRandomImage(doc, images_data, disposable=False, verbose=False):
     if disposable:
         images_type = images_data["disposable_random_images"]
     else:
@@ -106,7 +110,9 @@ def placeDisposableOrRandomImage(doc, images_data, disposable=False):
         if images_names:
             random_image = random.choice(images_names)
             random_image_path = join(images_collection["path"], random_image)
-            processImagePlacement(doc, images_collection, random_image_path)
+            processImagePlacement(
+                doc, images_collection, random_image_path, verbose=verbose
+            )
             if disposable:
                 rename(
                     random_image_path,
@@ -116,18 +122,56 @@ def placeDisposableOrRandomImage(doc, images_data, disposable=False):
     return doc
 
 
-def main():
-    doc = fitz.open("input.pdf")
+def parse_args():
+    parser = argparse.ArgumentParser(description="Place images on PDF pages")
+    parser.add_argument(
+        "-i",
+        "--pdf",
+        default="input.pdf",
+        help="Input PDF file path (default: input.pdf)",
+    )
+    parser.add_argument(
+        "-o",
+        "--output",
+        default="output.pdf",
+        help="Output PDF file path (default: output.pdf)",
+    )
+    parser.add_argument(
+        "-c",
+        "--json",
+        default="images.json",
+        help="JSON config file path (default: images.json)",
+    )
+    parser.add_argument(
+        "--skip-regular", action="store_true", help="Skip placing regular images"
+    )
+    parser.add_argument(
+        "--skip-random", action="store_true", help="Skip placing random images"
+    )
+    parser.add_argument(
+        "--skip-disposable", action="store_true", help="Skip placing disposable images"
+    )
+    parser.add_argument("-v", "--verbose", action="store_true", help="Verbose output")
+    return parser.parse_args()
 
-    json_data = readJson("images.json")
+
+def main():
+    args = parse_args()
+
+    doc = fitz.open(args.pdf)
+    json_data = readJson(args.json)
 
     createDirs(json_data)
 
-    doc = placeRegularImages(doc, json_data)
-    doc = placeDisposableOrRandomImage(doc, json_data)
-    doc = placeDisposableOrRandomImage(doc, json_data, True)
+    if not args.skip_regular:
+        doc = placeRegularImages(doc, json_data, verbose=args.verbose)
+    if not args.skip_random:
+        doc = placeDisposableOrRandomImage(doc, json_data, verbose=args.verbose)
+    if not args.skip_disposable:
+        doc = placeDisposableOrRandomImage(doc, json_data, True, verbose=args.verbose)
 
-    doc.save("output.pdf")
+    doc.save(args.output)
+    print(f"Saved to {args.output}")
 
 
 if __name__ == "__main__":
