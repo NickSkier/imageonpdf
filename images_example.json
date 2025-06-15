@@ -27,16 +27,33 @@
       "path": "random_images/",
       "x": 100,
       "y": 200,
-      "size": 1,
+      "size": 0.3,
+      "page": 0
+    },
+    {
+      "path": "random_images2/",
+      "x": 300,
+      "y": 200,
+      "size": 0.23,
       "page": 0
     }
   ],
-  "disposable_random_images": {
+  "disposable_random_images": [
+    {
       "path": "disposable_random_images/",
       "disposed_path": "disposed_images/",
       "x": 100,
       "y": 200,
       "size": 1.2,
       "page": 0
-  }
+    },
+    {
+      "path": "disposable_random_images2/",
+      "disposed_path": "disposed_images2/",
+      "x": 100,
+      "y": 300,
+      "size": 1.2,
+      "page": 0
+    }
+  ]
 }

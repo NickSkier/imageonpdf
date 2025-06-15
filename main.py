@@ -1,6 +1,7 @@
 import fitz
-import os.path
 import json
+from os import makedirs
+from os.path import isfile
 
 
 def readJson(json_path):
@@ -10,40 +11,29 @@ def readJson(json_path):
 
 
 def createDirs(images_data):
-    if "images" in images_data:
-        first_image = images_data["images"][0]
-        first_image_path = first_image["path"]
-        images_dir = first_image_path[: first_image_path.find("/") + 1]
-        try:
-            os.makedirs(images_dir, exist_ok=True)
-        except OSError as error:
-            print(f"Directory {images_dir} for images can not be created")
-            print(f"Error: {error}")
+    images_dirs = list()
+    successful = True
+    for img_batch in (
+        images_data["images"],
+        images_data["random_images"],
+        images_data["disposable_random_images"],
+    ):
+        for img_batch_data in img_batch:
+            img_path = img_batch_data["path"]
+            img_dir = img_path[: img_path.find("/") + 1]
+            images_dirs.append(img_dir)
 
-    if "random_images" in images_data:
-        rand_img = images_data["random_images"]
-        try:
-            os.makedirs(rand_img["path"], exist_ok=True)
-        except OSError as error:
-            print(f"Directory {rand_img['path']} for random images can not be created")
-            print(f"Error: {error}")
+    unique_images_dirs = list(set(images_dirs))
 
-    if "disposable_random_images" in images_data:
-        dispos_rand_img = images_data["disposable_random_images"]
+    for img_dir in unique_images_dirs:
         try:
-            os.makedirs(dispos_rand_img["path"], exist_ok=True)
+            makedirs(img_dir, exist_ok=True)
         except OSError as error:
-            print(
-                f"Directory {dispos_rand_img['path']} for disposable random images can not be created"
-            )
+            print(f"Directory {img_dir} can not be created")
             print(f"Error: {error}")
-        try:
-            os.makedirs(dispos_rand_img["disposed_path"], exist_ok=True)
-        except OSError as error:
-            print(
-                f"Directory {dispos_rand_img['disposed_path']} for disposed random images can not be created"
-            )
-            print(f"Error: {error}")
+            successful = False
+
+    return successful
 
 
 def addImage(doc, image, page_index=0, offset_x=0, offset_y=0, image_size_factor=1):
@@ -72,7 +62,7 @@ def addImageOnEachPage(doc, image, offset_x=0, offset_y=0, image_size_factor=1):
 def addRegularImages(doc, images_data):
     for img in images_data["images"]:
         print(f"Image {img['path']} at ({img['x']}, {img['y']}) scale {img['size']}")
-        if os.path.isfile(img["path"]):
+        if isfile(img["path"]):
             if img["page"] == "all":
                 doc = addImageOnEachPage(
                     doc, img["path"], img["x"], img["y"], img["size"]
