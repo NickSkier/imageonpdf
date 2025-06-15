@@ -1,0 +1,19 @@
+# App files and directories
+images/
+random_images/
+disposable_random_images/
+disposed_images/
+input.pdf
+output.pdf
+images.json
+
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
