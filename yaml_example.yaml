@@ -1,0 +1,46 @@
+images:
+  - path: images/example_image1.png
+    x: 100
+    y: 100
+    size: 0.4
+    page: 0
+
+  - path: images/example_image2.jpg
+    x: 100
+    y: 200
+    size: 0.32
+    page: 0
+
+  - path: images/example_image3_on_all_pages.png
+    x: 500
+    y: 600
+    size: 0.24
+    page: all
+
+random_images:
+  - path: random_images/
+    x: 100
+    y: 200
+    size: 0.3
+    page: 0
+
+  - path: random_images2/
+    x: 300
+    y: 200
+    size: 0.23
+    page: 0
+
+disposable_random_images:
+  - path: disposable_random_images/
+    disposed_path: disposed_images/
+    x: 100
+    y: 200
+    size: 1.2
+    page: 0
+
+  - path: disposable_random_images2/
+    disposed_path: disposed_images2/
+    x: 100
+    y: 300
+    size: 1.2
+    page: 0

@@ -9,6 +9,7 @@ disposed_images2/
 input.pdf
 output.pdf
 images.json
+images.yaml
 
 # Python-generated files
 __pycache__/

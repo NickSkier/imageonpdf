@@ -5,12 +5,24 @@ import argparse
 import textwrap
 from os import makedirs, listdir, rename
 from os.path import isfile, join
+from sys import exit
 
 
 def readJson(json_path):
     with open(json_path) as f:
         json_data = json.load(f)
     return json_data
+
+
+def readYaml(yaml_path):
+    try:
+        import yaml
+    except ImportError:
+        print("\033[1;31mERROR:\033[0m You need to install PyYAML to use --yaml.")
+        exit(1)
+    with open(yaml_path) as f:
+        yaml_data = yaml.safe_load(f)
+    return yaml_data
 
 
 def createDirs(images_data):
@@ -224,6 +236,11 @@ def parse_args():
         help="JSON config file path (default: images.json)",
     )
     parser.add_argument(
+        "--yaml",
+        default=None,
+        help="YAML config file path (optional)",
+    )
+    parser.add_argument(
         "--skip-all", action="store_true", help="Skip placing all images types"
     )
     parser.add_argument(
@@ -284,15 +301,18 @@ def main():
         save = True
 
     if not args.skip_all:
-        json_data = readJson(args.json)
-        createDirs(json_data)
+        if args.yaml is not None:
+            images_data = readYaml(args.yaml)
+        else:
+            images_data = readJson(args.json)
+        createDirs(images_data)
         if not args.skip_regular:
-            doc = placeRegularImages(doc, json_data, verbose=args.verbose)
+            doc = placeRegularImages(doc, images_data, verbose=args.verbose)
         if not args.skip_random:
-            doc = placeDisposableOrRandomImage(doc, json_data, verbose=args.verbose)
+            doc = placeDisposableOrRandomImage(doc, images_data, verbose=args.verbose)
         if not args.skip_disposable:
             doc = placeDisposableOrRandomImage(
-                doc, json_data, True, verbose=args.verbose
+                doc, images_data, True, verbose=args.verbose
             )
         save = True
 
