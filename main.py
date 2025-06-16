@@ -84,7 +84,9 @@ def processImagePlacement(doc, img, path=None, verbose=False):
             if verbose:
                 print(f"Added on the page {img['page']}")
     else:
-        print(f"\033[33mWARNING:\033[0m Image {path} does not exist!")
+        print(
+            f"\033[1;33mWARNING:\033[0m Image \033[1;33m{path}\033[0m does not exist!"
+        )
 
     return doc
 
@@ -123,11 +125,15 @@ def placeDisposableOrRandomImage(doc, images_data, disposable=False, verbose=Fal
     return doc
 
 
-def cropPage(doc, args):
-    if len(args) in (3, 5):
-        print(args)
-    else:
+def getPageSize(doc, page_num):
+    page = doc[page_num]
+    return (page.rect.width, page.rect.height)
+
+
+def cropPageByPoints(doc, args):
+    if len(args) not in (3, 5):
         raise argparse.ArgumentTypeError("Must provide either 3 or 5 values.")
+
     page_num = args[0]
     w = args[1]
     h = args[2]
@@ -141,8 +147,52 @@ def cropPage(doc, args):
     page_height = page.rect.height
     if (w + x > page_width) or (h + y > page_height):
         raise ValueError(
-            f"\033[33mWARNING:\033[0m Provided page sizes for cropping are beyond sizes of the original page №{page_num}!\n"
-            f"\033[33mWARNING:\033[0m Original page №{page_num} has width={page_width} and height={page_height}"
+            f"\033[1;31mERROR:\033[0m Provided page sizes for cropping are beyond sizes of the original page \033[1;33m№{page_num}\033[0m!\n"
+            f"\033[1;31mERROR:\033[0m Original page \033[1;33m№{page_num}\033[0m has \033[1;33mwidth={page_width}\033[0m and \033[1;33mheight={page_height}\033[0m"
+        )
+        print()
+        return False
+    page.set_cropbox(fitz.Rect(x, y, x + w, y + h))
+    return doc
+
+
+def cropPageByPercent(doc, args):
+    if len(args) not in (2, 3):
+        raise argparse.ArgumentTypeError("Must provide either 2 or 3 values.")
+
+    page_num = args[0]
+    page = doc[page_num]
+    page_width = page.rect.width
+    page_height = page.rect.height
+    w_perc = args[1]
+    if len(args) == 3:
+        h_perc = args[2]
+    else:
+        h_perc = 100
+    if h_perc == 0 or w_perc == 0:
+        raise ValueError(
+            "\033[1;31mERROR:\033[0m Percent can not be \033[1;33mzero\033[0m!\n"
+        )
+
+    if w_perc < 0:
+        x = page_width * abs(w_perc) / 100
+        w = page_width - x
+        print(f"x={x}, w={w}")
+    else:
+        x = 0
+        w = page_width * w_perc / 100
+    if h_perc < 0:
+        y = page_height * abs(h_perc) / 100
+        h = page_height - y
+        print(f"y={y}, h={h}")
+    else:
+        y = 0
+        h = page_height * h_perc / 100
+
+    if (w + x > page_width) or (h + y > page_height):
+        raise ValueError(
+            f"\033[1;31mERROR:\033[0m Provided page sizes for cropping are beyond sizes of the original page \033[1;33m№{page_num}\033[0m!\n"
+            f"\033[1;31mERROR:\033[0m Original page \033[1;33m№{page_num}\033[0m has \033[1;33mwidth={page_width}\033[0m and \033[1;33mheight={page_height}\033[0m"
         )
         print()
         return False
@@ -184,12 +234,29 @@ def parse_args():
     )
     parser.add_argument("-v", "--verbose", action="store_true", help="Verbose output")
     parser.add_argument(
+        "--page-size",
+        type=int,
+        help="Print page size in points by its number",
+    )
+    parser.add_argument(
         "--crop",
         nargs="+",
         type=int,
         help=textwrap.dedent(
             """\
-        Crop page.
+        Crop page by a percentege.
+        Negative percent values crop page from left to right and from bottom to top.
+        Usage: --crop 2[page] 20[width percent] -50[height percent(def: 100)]
+        """
+        ),
+    )
+    parser.add_argument(
+        "--crop-points",
+        nargs="+",
+        type=int,
+        help=textwrap.dedent(
+            """\
+        Crop page by points.
         Usage: --crop 2[page] 200[crop width] 400[crop height] 20[hor. starting point(def: 0)] 20[ver. starting point(def: 0)]
         """
         ),
@@ -202,8 +269,14 @@ def main():
 
     doc = fitz.open(args.pdf)
 
+    if args.page_size is not None:
+        print(
+            f"Page {args.page_size} sizes in points (x, y): {getPageSize(doc, args.page_size)}\n"
+        )
     if args.crop:
-        cropPage(doc, args.crop)
+        cropPageByPercent(doc, args.crop)
+    if args.crop_points:
+        cropPageByPoints(doc, args.crop_points)
 
     json_data = readJson(args.json)
 
