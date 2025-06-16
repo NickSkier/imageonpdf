@@ -224,6 +224,9 @@ def parse_args():
         help="JSON config file path (default: images.json)",
     )
     parser.add_argument(
+        "--skip-all", action="store_true", help="Skip placing all images types"
+    )
+    parser.add_argument(
         "--skip-regular", action="store_true", help="Skip placing regular images"
     )
     parser.add_argument(
@@ -266,7 +269,7 @@ def parse_args():
 
 def main():
     args = parse_args()
-
+    save = False
     doc = fitz.open(args.pdf)
 
     if args.page_size is not None:
@@ -275,22 +278,27 @@ def main():
         )
     if args.crop:
         cropPageByPercent(doc, args.crop)
+        save = True
     if args.crop_points:
         cropPageByPoints(doc, args.crop_points)
+        save = True
 
-    json_data = readJson(args.json)
+    if not args.skip_all:
+        json_data = readJson(args.json)
+        createDirs(json_data)
+        if not args.skip_regular:
+            doc = placeRegularImages(doc, json_data, verbose=args.verbose)
+        if not args.skip_random:
+            doc = placeDisposableOrRandomImage(doc, json_data, verbose=args.verbose)
+        if not args.skip_disposable:
+            doc = placeDisposableOrRandomImage(
+                doc, json_data, True, verbose=args.verbose
+            )
+        save = True
 
-    createDirs(json_data)
-
-    if not args.skip_regular:
-        doc = placeRegularImages(doc, json_data, verbose=args.verbose)
-    if not args.skip_random:
-        doc = placeDisposableOrRandomImage(doc, json_data, verbose=args.verbose)
-    if not args.skip_disposable:
-        doc = placeDisposableOrRandomImage(doc, json_data, True, verbose=args.verbose)
-
-    doc.save(args.output)
-    print(f"Saved to {args.output}")
+    if save:
+        doc.save(args.output)
+        print(f"Saved to {args.output}")
 
 
 if __name__ == "__main__":
