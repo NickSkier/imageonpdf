@@ -2,6 +2,7 @@ import fitz
 import json
 import random
 import argparse
+import textwrap
 from os import makedirs, listdir, rename
 from os.path import isfile, join
 
@@ -122,8 +123,38 @@ def placeDisposableOrRandomImage(doc, images_data, disposable=False, verbose=Fal
     return doc
 
 
+def cropPage(doc, args):
+    if len(args) in (3, 5):
+        print(args)
+    else:
+        raise argparse.ArgumentTypeError("Must provide either 3 or 5 values.")
+    page_num = args[0]
+    w = args[1]
+    h = args[2]
+    if len(args) == 5:
+        x = args[3]
+        y = args[4]
+    else:
+        x = y = 0
+    page = doc[page_num]
+    page_width = page.rect.width
+    page_height = page.rect.height
+    if (w + x > page_width) or (h + y > page_height):
+        raise ValueError(
+            f"\033[33mWARNING:\033[0m Provided page sizes for cropping are beyond sizes of the original page №{page_num}!\n"
+            f"\033[33mWARNING:\033[0m Original page №{page_num} has width={page_width} and height={page_height}"
+        )
+        print()
+        return False
+    page.set_cropbox(fitz.Rect(x, y, x + w, y + h))
+    return doc
+
+
 def parse_args():
-    parser = argparse.ArgumentParser(description="Place images on PDF pages")
+    parser = argparse.ArgumentParser(
+        description="Place images on PDF pages",
+        formatter_class=argparse.RawTextHelpFormatter,
+    )
     parser.add_argument(
         "-i",
         "--pdf",
@@ -152,6 +183,17 @@ def parse_args():
         "--skip-disposable", action="store_true", help="Skip placing disposable images"
     )
     parser.add_argument("-v", "--verbose", action="store_true", help="Verbose output")
+    parser.add_argument(
+        "--crop",
+        nargs="+",
+        type=int,
+        help=textwrap.dedent(
+            """\
+        Crop page.
+        Usage: --crop 2[page] 200[crop width] 400[crop height] 20[hor. starting point(def: 0)] 20[ver. starting point(def: 0)]
+        """
+        ),
+    )
     return parser.parse_args()
 
 
@@ -159,6 +201,10 @@ def main():
     args = parse_args()
 
     doc = fitz.open(args.pdf)
+
+    if args.crop:
+        cropPage(doc, args.crop)
+
     json_data = readJson(args.json)
 
     createDirs(json_data)
