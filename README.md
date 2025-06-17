@@ -1,7 +1,9 @@
 # ImageOnPDF
 
 A command-line utility for placing images onto PDF pages according to a JSON/YAML configuration.
+
 Excellent for PDF mass editing.
+
 Supports:
 
 - Regular images
@@ -51,8 +53,6 @@ git clone https://github.com/NickSkier/imageonpdf.git
 ```
 
 ### Using uv
-
-The project is structured for use with **uv**.
 
 #### Install dependencies
 
